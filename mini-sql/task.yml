@@ -1,0 +1,13 @@
+---
+name: "Baby SQLi"
+id: babysqli
+description: >
+  <p>Just login as admin.</p>
+  <p><a href="http://{host}:{port}/" target="_blank">Challenge</a></p>
+flag: "INSEC{h@h@_u_kn0w_g3rm4n_3ff1c1ency}"
+author: ptr-yudai
+tags:
+    - web
+host: web.ctf.zer0pts.com
+port: 8004
+is_survey: false
