@@ -1,9 +1,0 @@
----
-name: neutron
-description: >
-  <p>Here is my new startup, electron pentesting as a service. The electron apps we audit are not hackable try breaking our own app. If you were able to hack it somehow, contact admin with your room id. </p><p> Download the app here: </p><p><a href="https://bsidesahm-web-files-blah-thisishash1234.s3.us-east-2.amazonaws.com/neutron-app_1.0.0_amd64.deb">Linux</a>, <a href="https://bsidesahm-web-files-blah-thisishash1234.s3.us-east-2.amazonaws.com/Neutron+Setup+1.0.0.exe">Windows</a>, <a href="https://bsidesahm-web-files-blah-thisishash1234.s3.us-east-2.amazonaws.com/Neutron-1.0.0.dmg">MacOS </a>
-flag: "Neko{El3ctr0n_s3curity_i5_s0_messy}"
-author: s1r1us
-category: web
-tags: []
-is_survey: false
