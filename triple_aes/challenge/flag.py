@@ -1,1 +1,0 @@
-flag = b"INSEC{5k1p_7h3_midd13_4nd_m337_in_7h3_midd13!!!}"

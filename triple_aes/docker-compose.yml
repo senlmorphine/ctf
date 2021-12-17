@@ -1,6 +1,0 @@
-version: '3'
-services:
-  triple_aes:
-    build: ./
-    ports:
-      - 10929:9999
