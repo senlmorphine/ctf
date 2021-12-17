@@ -1,0 +1,14 @@
+{
+  "name": "neutron",
+  "version": "1.0.0",
+  "description": "Check out my new electron app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "s1r1us",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
