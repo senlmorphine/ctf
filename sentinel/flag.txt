@@ -1,1 +1,0 @@
-INSEC{format_string_is_t00_0ld}
