@@ -1,3 +1,0 @@
-Spectacular! The flag can be found below:
-
-INSEC{my_t3@ch3r_l0v3s_l4t3x_xd}
