@@ -1,9 +1,7 @@
 name: secure rsa
 author: lmorphine
 description: |-
-  I hate padding with randomness, but I heard you have to pad RSA to make it secure. So I invented this new type of padding that I call "quadratic padding" (patent pending). I'm pretty sure it's secure, but check it out for me, will you?
-
-  `{{ nc }}`
+  
 flag:
   file: flag.txt
 
