@@ -1,0 +1,19 @@
+name: "correcthorsebatterystaple"
+author: "mirren"
+category: "Crypto"
+
+description: |
+  I found a cool encoding for my secret passwords! 
+  ```nc 51.124.222.205 13378```
+value: 200
+type: "standard"
+
+files:
+flags:
+  - "DCTF{RelativeDistanceCoolEncoding}"
+tags:
+  - "crypto"
+  - "misc"
+
+state: "visible"
+version: "0.1"
