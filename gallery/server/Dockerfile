@@ -7,7 +7,7 @@ RUN npm i
 COPY . .
 
 ENV NODE_ENV production
-RUN chown node:node photobucket
+RUN chown node:node gallery
 USER node
 EXPOSE 3000
 
