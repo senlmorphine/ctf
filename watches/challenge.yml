@@ -1,0 +1,34 @@
+name: watches
+author: morphine
+description: |-
+  
+flag:
+  file: server/flag.txt
+
+containers:
+  main:
+    build: server
+    replicas: 1
+    ports:
+      - 8080
+    environment:
+        ENV: production
+
+expose:
+  main:
+    - target: 8080
+      http: watches
+
+provide:
+  - kind: zip
+    spec:
+      as: server.zip
+      exclude:
+        - server/flag.txt
+        - server/.gitignore
+      files:
+        - server
+      additional:
+        - path: server/flag.txt
+          str: MCSC{fake_flag}
+  - admin-bot.js
