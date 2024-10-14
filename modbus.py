@@ -1,216 +1,96 @@
 import sys
-import urllib.request
-import json
-import configparser
 import time
 from pymodbus.client import ModbusTcpClient
-from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
+from pymodbus.constants import Endian
 
 # =======================
 # Functions
 # =======================
 
-def readChannels():
-    # voltage phase 1 to neutral
-    print("New measurement readings: ", int(time.time()))
-    listValues = []
-    for c in listChannels:
-        handle = client.read_holding_registers(c['register'], c['words'], unit=c['unit'])
-        if c['words'] > 1:
-            decoder = BinaryPayloadDecoder.fromRegisters(handle.registers, endian=Endian.Big)
-            value = decoder.decode_32bit_int() / float(c['factor'])
-        else:
-            value = handle.registers[0] / float(c['factor'])
-        listValues.append(value)    
+# Function to read holding registers from Diris A-40
+def read_register(register, unit=1, count=2):
+    """
+    Reads registers from the Diris A-40 Modbus device.
+    Args:
+        register (int): The register to read from.
+        unit (int): The Modbus unit ID (default is 1).
+        count (int): The number of registers to read (default is 2 for 32-bit values).
+    Returns:
+        float: The value retrieved from the registers after decoding.
+    """
+    result = client.read_holding_registers(register, count, unit=unit)
+    if result.isError():
+        print(f"Error reading register {register}")
+        return None
+    return result.registers
 
-    for i, channel in enumerate(listChannels):
-        addValue(channel['uuid'], int(time.time() * 1000), listValues[i])
+# Function to decode and return the 32-bit floating point value
+def decode_32bit_float(registers):
+    decoder = BinaryPayloadDecoder.fromRegisters(registers, byteorder=Endian.Big, wordorder=Endian.Big)
+    return decoder.decode_32bit_float()
 
-# Add measurement value
-def addValue(uuid, timestamp, value):
-    url = f"{strURL}/data/{uuid}.json?operation=add&ts={timestamp}&value={value}"
-    req = urllib.request.Request(url)
-    response = urllib.request.urlopen(req)
-    jsonVZ = response.read().decode('utf-8')
-    return 1
+# Function to read voltage, current, and power from Diris A-40
+def read_diris_data():
+    print("Reading data from Diris A-40...")
 
-# Create group in VZ
-def createGroup(title, public=1):
-    url = f"{strURL}/group.json?operation=add&title={title}&public={public}"
-    req = urllib.request.Request(url)
-    response = urllib.request.urlopen(req)
-    jsonVZ = response.read().decode('utf-8')
-    data = json.loads(jsonVZ)
-    _uuid = data["entity"]["uuid"]
-    return _uuid
+    # Define Modbus registers (example register addresses)
+    registers = {
+        'voltage_phase_1': 51284,  # Placeholder register
+        'voltage_phase_2': 51285,  # Placeholder register
+        'voltage_phase_3': 51286,  # Placeholder register
+        'frequency': 51287,        # Placeholder register
+        'active_power': 50536,     # Placeholder register
+        'reactive_power': 50538    # Placeholder register
+    }
 
-# Add group or channel to a parent group
-def addToGroup(uuidParent, uuidChild):
-    url = f"{strURL}/group/{uuidParent}.json?operation=add&uuid={uuidChild}"
-    req = urllib.request.Request(url)
-    response = urllib.request.urlopen(req)
-    jsonVZ = response.read().decode('utf-8')
-    return 1
+    # Reading voltage phase 1 (example)
+    voltage_1_registers = read_register(registers['voltage_phase_1'])
+    if voltage_1_registers:
+        voltage_1 = decode_32bit_float(voltage_1_registers)
+        print(f"Voltage Phase 1: {voltage_1} V")
 
-# Get group
-def getGroup(uuid):
-    url = f"{strURL}/group/{uuid}.json"
-    req = urllib.request.Request(url)
-    response = urllib.request.urlopen(req)
-    jsonVZ = response.read().decode('utf-8')
-    return jsonVZ
+    # Reading frequency
+    frequency_registers = read_register(registers['frequency'])
+    if frequency_registers:
+        frequency = decode_32bit_float(frequency_registers)
+        print(f"Frequency: {frequency} Hz")
 
-# Get children of group
-def getChildren(uuid):
-    data = json.loads(getGroup(uuid))
-    listChildren = []
-    if 'entity' in data and 'children' in data['entity']:
-        for child in data['entity']['children']:
-            listChildren.append(child['uuid'])
-    return listChildren
+    # Reading active power
+    active_power_registers = read_register(registers['active_power'])
+    if active_power_registers:
+        active_power = decode_32bit_float(active_power_registers)
+        print(f"Active Power: {active_power} W")
 
-# Get title of group
-def getGroupTitle(uuid):
-    data = json.loads(getGroup(uuid))
-    return data['entity']['title']
-
-# Create Channel
-def createChannel(type, title):
-    url = f"{strURL}/channel.json?operation=add&type={type}&title={title}"
-    req = urllib.request.Request(url)
-    response = urllib.request.urlopen(req)
-    jsonVZ = response.read().decode('utf-8')
-    data = json.loads(jsonVZ)
-    _uuid = data["entity"]["uuid"]
-    return _uuid
-
-# Test VZ installation
-def testVZ():
-    req = urllib.request.Request(strURL)
-    try:
-        response = urllib.request.urlopen(req)
-    except urllib.error.HTTPError as e:
-        return False
-    jsonVZ = response.read().decode('utf-8')
-    try:
-        data = json.loads(jsonVZ)
-    except ValueError as e:
-        return False
-    return data.get('version')
-
-# =======================
-# Definitions
-# =======================
-
-print("Used Python version: ")
-print(sys.version)
-
-# Add channels
-listChannels = [
-    {'description': "V1_ph2n", 'register': 51284, 'words': 1, 'unit': 0xFF, 'measurement': "voltage", 'factor': 100},
-    {'description': "V2_ph2n", 'register': 51285, 'words': 1, 'unit': 0xFF, 'measurement': "voltage", 'factor': 100},
-    {'description': "V3_ph2n", 'register': 51286, 'words': 1, 'unit': 0xFF, 'measurement': "voltage", 'factor': 100},
-    {'description': "frequency", 'register': 51287, 'words': 1, 'unit': 0xFF, 'measurement': "frequency", 'factor': 100},
-    {'description': "P", 'register': 50536, 'words': 2, 'unit': 0xFF, 'measurement': "activepower", 'factor': 0.1},
-    {'description': "P1", 'register': 50544, 'words': 2, 'unit': 0xFF, 'measurement': "activepower", 'factor': 0.1},
-    {'description': "P2", 'register': 50546, 'words': 2, 'unit': 0xFF, 'measurement': "activepower", 'factor': 0.1},
-    {'description': "P3", 'register': 50548, 'words': 2, 'unit': 0xFF, 'measurement': "activepower", 'factor': 0.1},
-    {'description': "Q", 'register': 50538, 'words': 2, 'unit': 0xFF, 'measurement': "reactivepower", 'factor': 0.1},
-    {'description': "Q1", 'register': 50550, 'words': 2, 'unit': 0xFF, 'measurement': "reactivepower", 'factor': 0.1},
-    {'description': "Q2", 'register': 50552, 'words': 2, 'unit': 0xFF, 'measurement': "reactivepower", 'factor': 0.1},
-    {'description': "Q3", 'register': 50554, 'words': 2, 'unit': 0xFF, 'measurement': "reactivepower", 'factor': 0.1}
-]
+    # Add more reads for reactive power, voltage phase 2/3, and others as needed.
 
 # =======================
 # Initialization
 # =======================
 
-# Load data from config.ini
-config = configparser.ConfigParser()
-config.read('config.ini')
-mainGrpUUID = config.get('Status', 'uuid')
-strURL = config.get('General', 'url')
-
-_testVZ = testVZ()
-
-if not _testVZ:
-    print("Something is wrong with VZ server or URL.")
-    exit()
-
-print("Version of VZ middleware:", _testVZ)
-
-intervalTime = int(config.get('General', 'intervalTime'))
-strName = config.get('General', 'name')
-strIP = config.get('General', 'IPsocomec')
+# Device connection information
+socomec_ip = '192.168.1.100'  # Replace with actual IP of your Diris A-40
+modbus_port = 502  # Default Modbus TCP port
 
 # Initialize Modbus client
-client = ModbusTcpClient(strIP)
-ret = client.connect()
-if ret:
-    print("Connected to Socomec.")
+client = ModbusTcpClient(socomec_ip, port=modbus_port)
+connection_status = client.connect()
+
+if connection_status:
+    print("Connected to Diris A-40.")
 else:
-    print("Connection to Socomec failed.")
-    exit()
-
-# Check if main group already exists. If not, create one
-if not mainGrpUUID:
-    print("No main group exists. Going to create one ...")
-    mainGrpUUID = createGroup(strName, 1)
-    print(mainGrpUUID)
-    config.set('Status', 'uuid', mainGrpUUID)
-    with open('config.ini', 'w') as configfile:
-        config.write(configfile)
-else:
-    print("Main group UUID: ", mainGrpUUID)
-
-# Check for existing subgroups
-subGroups = {}
-listGroups = getChildren(mainGrpUUID)
-
-for x in listGroups:
-    key = getGroupTitle(x)
-    if key not in subGroups:
-        subGroups[key] = x
-    else:
-        print("Subgroup exists twice. That shouldn't happen.")
-        exit(500)
-
-# Check measurement channels and assign to group
-for c in listChannels:
-    strMeasurement = c['measurement']
-    _uuid = 0
-
-    # Check if subgroup already exists
-    if strMeasurement not in subGroups:
-        _uuid = createGroup(strMeasurement, 0)
-        subGroups[strMeasurement] = _uuid
-        print("Group created:", strMeasurement, addToGroup(mainGrpUUID, _uuid))
-
-    # Create channel and add to group
-    if c['measurement'] == "voltage":
-        _uuid = createChannel("voltage", c['description'])
-    elif c['measurement'] == "frequency":
-        _uuid = createChannel("frequency", c['description'])
-    elif c['measurement'] in ["activepower", "reactivepower"]:
-        _uuid = createChannel("powersensor", c['description'])
-    else:
-        print("Measurement type not known.")
-        exit()
-
-    # Add channel to subgroup
-    print("Added to group successfully:", addToGroup(subGroups[c['measurement']], _uuid))
-    c['uuid'] = _uuid
+    print("Failed to connect to Diris A-40.")
+    sys.exit(1)
 
 # =======================
-# Main Loop
+# Main Loop (Retrieve Data)
 # =======================
-
 try:
     while True:
-        readChannels()
-        time.sleep(intervalTime)  # Sleep for the interval time (in seconds) before the next execution
+        read_diris_data()
+        time.sleep(10)  # Retrieve data every 10 seconds (adjust as needed)
 except KeyboardInterrupt:
-    print("Program interrupted by user. Exiting...")
-finally:
-    client.close()
+    print("Script interrupted. Exiting...")
+
+# Close the client connection when done
+client.close()
