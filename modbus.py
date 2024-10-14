@@ -3,11 +3,9 @@ import urllib.request
 import json
 import configparser
 import time
-from pymodbus.client.sync import ModbusTcpClient
+from pymodbus.client import ModbusTcpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
-from datetime import datetime
-from apscheduler.schedulers.blocking import BlockingScheduler
 
 # =======================
 # Functions
@@ -142,7 +140,7 @@ if not _testVZ:
 
 print("Version of VZ middleware:", _testVZ)
 
-intervalTime = config.get('General', 'intervalTime')
+intervalTime = int(config.get('General', 'intervalTime'))
 strName = config.get('General', 'name')
 strIP = config.get('General', 'IPsocomec')
 
@@ -154,9 +152,6 @@ if ret:
 else:
     print("Connection to Socomec failed.")
     exit()
-
-# Start the scheduler
-sched = BlockingScheduler()
 
 # Check if main group already exists. If not, create one
 if not mainGrpUUID:
@@ -208,10 +203,14 @@ for c in listChannels:
     c['uuid'] = _uuid
 
 # =======================
-# Main
+# Main Loop
 # =======================
 
-sched.add_job(readChannels, 'interval', seconds=int(intervalTime))
-sched.start()
-
-client.close()
+try:
+    while True:
+        readChannels()
+        time.sleep(intervalTime)  # Sleep for the interval time (in seconds) before the next execution
+except KeyboardInterrupt:
+    print("Program interrupted by user. Exiting...")
+finally:
+    client.close()
