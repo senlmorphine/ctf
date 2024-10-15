@@ -1,96 +1,59 @@
-import sys
 import time
 from pymodbus.client import ModbusTcpClient
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.constants import Endian
 
-# =======================
-# Functions
-# =======================
+# Initialize Modbus client
+client = ModbusTcpClient('192.168.101.44')  # Replace with the correct IP
 
-# Function to read holding registers from Diris A-40
-def read_register(register, unit=1, count=2):
-    """
-    Reads registers from the Diris A-40 Modbus device.
-    Args:
-        register (int): The register to read from.
-        unit (int): The Modbus unit ID (default is 1).
-        count (int): The number of registers to read (default is 2 for 32-bit values).
-    Returns:
-        float: The value retrieved from the registers after decoding.
-    """
-    result = client.read_holding_registers(register, count, unit=unit)
+# Connect to the device
+if client.connect():
+    print("Connected to Socomec.")
+else:
+    print("Connection to Socomec failed.")
+    exit()
+
+# Function to read U32 register (2 words)
+def read_u32_register(register, unit_id):
+    result = client.read_holding_registers(register, 2, slave=unit_id)
     if result.isError():
-        print(f"Error reading register {register}")
+        print(f"Error reading register {register} with unit ID {unit_id}")
         return None
-    return result.registers
 
-# Function to decode and return the 32-bit floating point value
-def decode_32bit_float(registers):
-    decoder = BinaryPayloadDecoder.fromRegisters(registers, byteorder=Endian.Big, wordorder=Endian.Big)
-    return decoder.decode_32bit_float()
+    decoder = BinaryPayloadDecoder.fromRegisters(result.registers, byteorder=Endian.BIG)
+    value = decoder.decode_32bit_uint()
+    return value
 
-# Function to read voltage, current, and power from Diris A-40
-def read_diris_data():
-    print("Reading data from Diris A-40...")
-
-    # Define Modbus registers (example register addresses)
+# Function to read relevant registers (Frequency, Voltage, Intensity)
+def read_relevant_registers(unit_id):
+    # Define registers, scaling factors, and units
     registers = {
-        'voltage_phase_1': 51284,  # Placeholder register
-        'voltage_phase_2': 51285,  # Placeholder register
-        'voltage_phase_3': 51286,  # Placeholder register
-        'frequency': 51287,        # Placeholder register
-        'active_power': 50536,     # Placeholder register
-        'reactive_power': 50538    # Placeholder register
+        'Voltage Phase 1 (V1)': (36867, 10**-2, "V"),  # Register, scaling factor, unit
+        'Frequency': (36871, 10**-3, "Hz"),  # Corrected scaling factor for frequency
+        'Current Phase 1 (I1)': (50540, 10**-2, "A"),  # Placeholder register for intensity, update as needed
     }
 
-    # Reading voltage phase 1 (example)
-    voltage_1_registers = read_register(registers['voltage_phase_1'])
-    if voltage_1_registers:
-        voltage_1 = decode_32bit_float(voltage_1_registers)
-        print(f"Voltage Phase 1: {voltage_1} V")
+    # Loop through the registers, read, and print the values
+    for description, (register, scale, unit) in registers.items():
+        value = read_u32_register(register, unit_id)
+        if value is not None:
+            value = value * scale  # Apply scaling factor
+            print(f"{description}: {value} {unit}")
+        else:
+            print(f"Failed to read {description}")
 
-    # Reading frequency
-    frequency_registers = read_register(registers['frequency'])
-    if frequency_registers:
-        frequency = decode_32bit_float(frequency_registers)
-        print(f"Frequency: {frequency} Hz")
+# Main loop to continuously read the relevant registers
+unit_id = 5  # Modbus address set to 005 after reset
 
-    # Reading active power
-    active_power_registers = read_register(registers['active_power'])
-    if active_power_registers:
-        active_power = decode_32bit_float(active_power_registers)
-        print(f"Active Power: {active_power} W")
-
-    # Add more reads for reactive power, voltage phase 2/3, and others as needed.
-
-# =======================
-# Initialization
-# =======================
-
-# Device connection information
-socomec_ip = '192.168.1.100'  # Replace with actual IP of your Diris A-40
-modbus_port = 502  # Default Modbus TCP port
-
-# Initialize Modbus client
-client = ModbusTcpClient(socomec_ip, port=modbus_port)
-connection_status = client.connect()
-
-if connection_status:
-    print("Connected to Diris A-40.")
-else:
-    print("Failed to connect to Diris A-40.")
-    sys.exit(1)
-
-# =======================
-# Main Loop (Retrieve Data)
-# =======================
 try:
     while True:
-        read_diris_data()
-        time.sleep(10)  # Retrieve data every 10 seconds (adjust as needed)
-except KeyboardInterrupt:
-    print("Script interrupted. Exiting...")
+        print("\nReading SOCOMEC DIRIS A-40 Data (Frequency, Voltage, and Intensity):")
+        read_relevant_registers(unit_id)
+        print("====================================")
+        time.sleep(5)  # Wait for 5 seconds before reading again (adjust as needed)
 
-# Close the client connection when done
-client.close()
+except KeyboardInterrupt:
+    print("\nScript interrupted by user. Exiting...")
+
+finally:
+    client.close()
