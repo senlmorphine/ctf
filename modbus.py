@@ -3,7 +3,7 @@ import struct
 import paho.mqtt.client as mqtt
 
 # MQTT configuration
-IO_LINK_BROKER = "192.168.1."  # Replace with the actual IP or hostname
+IO_LINK_BROKER = "192.168.1.125"  # Replace with the actual IP or hostname
 IO_LINK_PORT = 1883  # Default MQTT port
 
 YOUSSEF_BROKER = "192.168.1.124"  # Replace with the actual IP or hostname
@@ -15,7 +15,6 @@ OUTPUT_TOPIC = "processed/data"  # Topic to publish transformed data to
 # Function to decode raw bytes from the hex data
 def decode_data(raw_bytes):
     decoded_values = {}
-
     # Decode each IN-WORD as per the mapping
     decoded_values['V.Rms'] = struct.unpack('>H', raw_bytes[0:2])[0] * 0.0001
     decoded_values['A.Peak'] = struct.unpack('>H', raw_bytes[4:6])[0] * 0.1
@@ -29,7 +28,6 @@ def decode_data(raw_bytes):
 # MQTT callback function for when a message is received
 def on_message(client, userdata, msg):
     print("Received message from IO-Link MQTT Broker")
-
     # Parse the JSON payload
     payload = json.loads(msg.payload)
     hex_data = payload["data"]["payload"]["/iolinkmaster/port[3]/iolinkdevice/pdin"]["data"]
@@ -49,8 +47,8 @@ def on_message(client, userdata, msg):
     print(f"Transformed data sent to Youssef's MQTT Broker: {transformed_payload}")
 
 # Initialize MQTT clients for both brokers
-client_io_link = mqtt.Client()
-client_youssef = mqtt.Client()
+client_io_link = mqtt.Client(client_id="io_link_client")
+client_youssef = mqtt.Client(client_id="youssef_client")
 
 # Configure connection to IO-Link MQTT Broker
 client_io_link.on_message = on_message
